@@ -61,11 +61,13 @@ class ApplicationService
                   "- 'review': Một đoạn nhận xét ngắn gọn, súc tích (tiếng Việt, khoảng 50-100 từ) giải thích lý do cho số điểm này. Nêu rõ ứng viên có điểm mạnh gì và đang thiếu hụt yêu cầu cốt lõi nào.";
 
         try {
-            $apiKey = env('OPENAI_API_KEY');
-            $apiBase = env('OPENAI_API_BASE', 'https://api.openai.com/v1');
-            
+            // Dùng config() thay vì env(): env() trả về null sau `php artisan config:cache`.
+            $apiKey = config('services.openai.key');
+            $apiBase = config('services.openai.base');
+
             if (!$apiKey || $apiKey == '') {
-                $this->fallbackToMockAI($application, $job);
+                Log::warning('Bỏ qua chấm điểm AI: chưa cấu hình OPENAI_API_KEY.', ['application_id' => $application->id]);
+                $this->markEvaluationUnavailable($application, 'Chưa cấu hình API key cho dịch vụ AI.');
                 return;
             }
 
@@ -75,7 +77,7 @@ class ApplicationService
                 'HTTP-Referer' => config('app.url'), // OpenRouter requirement
                 'X-Title' => 'Auto Career Bridge', // OpenRouter requirement
             ])->post($apiBase . '/chat/completions', [
-                'model' => env('OPENAI_MODEL', 'gpt-3.5-turbo'),
+                'model' => config('services.openai.model'),
                 'messages' => [
                     ['role' => 'system', 'content' => 'You are a strict and objective ATS (Applicant Tracking System).'],
                     ['role' => 'user', 'content' => $prompt]
@@ -96,26 +98,27 @@ class ApplicationService
                     ]);
                 } else {
                     Log::error('OpenAI response was not valid JSON.', ['content' => $aiContent]);
-                    $this->fallbackToMockAI($application, $job);
+                    $this->markEvaluationUnavailable($application, 'Dịch vụ AI trả về dữ liệu không hợp lệ.');
                 }
             } else {
                 Log::error('OpenAI API request failed.', ['status' => $response->status(), 'body' => $response->body()]);
-                $this->fallbackToMockAI($application, $job);
+                $this->markEvaluationUnavailable($application, 'Không gọi được dịch vụ AI.');
             }
         } catch (\Exception $e) {
             Log::error('Error during AI Evaluation: ' . $e->getMessage());
-            $this->fallbackToMockAI($application, $job);
+            $this->markEvaluationUnavailable($application, 'Lỗi hệ thống khi chấm điểm.');
         }
     }
 
-    private function fallbackToMockAI(Application $application, Job $job)
+    /**
+     * Khi không chấm được điểm, để ai_score = null thay vì bịa một con số.
+     * HR phải thấy rõ là "chưa có đánh giá", không phải một điểm số trông có vẻ thật.
+     */
+    private function markEvaluationUnavailable(Application $application, string $reason): void
     {
-        $score = rand(65, 95);
-        $review = "Đây là kết quả phân tích giả lập (Mock AI) vì hệ thống gặp lỗi khi gọi API (hoặc Key chưa chính xác). Ứng viên này có các kỹ năng khá phù hợp với vị trí {$job->title}. Điểm số được đánh giá ngẫu nhiên để đảm bảo quy trình không bị gián đoạn.";
-        
         $application->update([
-            'ai_score' => $score,
-            'ai_review' => $review,
+            'ai_score' => null,
+            'ai_review' => "Chưa có đánh giá tự động. Lý do: {$reason} Vui lòng xem xét hồ sơ thủ công.",
         ]);
     }
 }

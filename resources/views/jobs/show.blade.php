@@ -69,7 +69,7 @@
                     <div class="alert alert-warning border-0 bg-warning bg-opacity-25 text-dark">
                         Vui lòng đăng nhập tài khoản Sinh viên để ứng tuyển.
                     </div>
-                    <a href="{{ route('mock.login', ['role' => 'student']) }}" class="btn btn-outline-primary w-100 rounded-pill">Đăng nhập Sinh viên</a>
+                    <a href="{{ route('login') }}" class="btn btn-outline-primary w-100 rounded-pill">Đăng nhập Sinh viên</a>
                 @endif
             </div>
         </div>

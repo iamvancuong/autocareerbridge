@@ -16,7 +16,7 @@ class CompanyJobTest extends TestCase
 
         $response = $this->actingAs($user)->get('/company/jobs');
 
-        $response->assertStatus(302); // Redirects usually when unauthorized
+        $response->assertForbidden(); // Middleware role:company,hiring chặn student
     }
 
     public function test_company_can_access_job_creation_page()
