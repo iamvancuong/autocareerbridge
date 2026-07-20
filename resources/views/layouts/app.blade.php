@@ -108,6 +108,7 @@
                 @endauth
             </ul>
             {{-- Dev-only quick login bar --}}
+            @env('local')
             @guest
             <div class="ms-3 d-flex gap-1">
                 <a href="{{ route('mock.login', ['role' => 'admin']) }}" class="btn btn-sm btn-outline-warning" title="Dev: Login Admin">A</a>
@@ -116,6 +117,7 @@
                 <a href="{{ route('mock.login', ['role' => 'student']) }}" class="btn btn-sm btn-outline-success" title="Dev: Login Student">S</a>
             </div>
             @endguest
+            @endenv
         </div>
     </div>
 </nav>

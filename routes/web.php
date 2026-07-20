@@ -87,8 +87,12 @@ Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
 Route::post('/register', [AuthController::class, 'register'])->name('register.post');
-Route::get('/mock-login/{role}', [AuthController::class, 'mockLogin'])->name('mock.login');
-Route::get('/mock-logout', [AuthController::class, 'mockLogout'])->name('mock.logout');
+// Đăng nhập giả không cần mật khẩu — CHỈ đăng ký route khi chạy local.
+// Trên staging/production các route này không tồn tại (404).
+if (app()->environment('local')) {
+    Route::get('/mock-login/{role}', [AuthController::class, 'mockLogin'])->name('mock.login');
+    Route::get('/mock-logout', [AuthController::class, 'mockLogout'])->name('mock.logout');
+}
 
 // Authenticated
 Route::middleware('auth')->group(function () {
@@ -111,13 +115,13 @@ Route::middleware('auth')->group(function () {
     Route::put('/collaborations/{id}', [CollaborationUIController::class, 'update'])->name('collaborations.update');
 
     // Student
-    Route::prefix('student')->name('student.')->group(function () {
+    Route::prefix('student')->name('student.')->middleware('role:student')->group(function () {
         Route::resource('resumes', StudentResumeController::class)->only(['index', 'store', 'destroy']);
         Route::put('resumes/{resume}/set-default', [StudentResumeController::class, 'setDefault'])->name('resumes.setDefault');
     });
 
     // Company
-    Route::prefix('company')->name('company.')->group(function () {
+    Route::prefix('company')->name('company.')->middleware('role:company,hiring')->group(function () {
         Route::resource('jobs', CompanyJobController::class);
         Route::resource('applications', CompanyApplicationController::class)->only(['index', 'show', 'update']);
         Route::resource('hirings', HiringController::class)->only(['index', 'store', 'destroy']);
@@ -125,7 +129,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // University
-    Route::prefix('university')->name('university.')->group(function () {
+    Route::prefix('university')->name('university.')->middleware('role:university,academic_affairs')->group(function () {
         Route::resource('workshops', WorkshopController::class)->only(['index', 'create', 'store', 'destroy']);
         Route::resource('academic_affairs', AcademicAffairController::class)->only(['index', 'store', 'destroy']);
         Route::get('majors', [UniversityMajorController::class, 'index'])->name('majors.index');
@@ -135,7 +139,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // Admin
-    Route::prefix('admin')->name('admin.')->group(function () {
+    Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
         Route::get('jobs', [AdminJobController::class, 'index'])->name('jobs.index');
         Route::post('jobs/{job}/approve', [AdminJobController::class, 'approve'])->name('jobs.approve');
