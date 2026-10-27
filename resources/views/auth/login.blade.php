@@ -18,6 +18,7 @@
                     <button type="submit" class="btn btn-gradient w-100 mb-3">Đăng nhập</button>
                     <p class="text-center text-muted small">Chưa có tài khoản? <a href="{{ route('register') }}" class="text-primary">Đăng ký ngay</a></p>
                 </form>
+                @env('local')
                 <hr class="my-3">
                 <p class="text-muted text-center small mb-2">Demo nhanh (Dev Mode)</p>
                 <div class="d-flex gap-2 flex-wrap justify-content-center">
@@ -26,6 +27,7 @@
                     <a href="{{ route('mock.login', ['role' => 'university']) }}" class="btn btn-sm btn-outline-info">University</a>
                     <a href="{{ route('mock.login', ['role' => 'student']) }}" class="btn btn-sm btn-outline-success">Student</a>
                 </div>
+                @endenv
             </div>
         </div>
     </div>

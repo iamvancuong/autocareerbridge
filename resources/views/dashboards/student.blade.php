@@ -16,8 +16,12 @@
             <span class="text-muted small">Đơn đã nộp</span>
         </div></div>
         <div class="col-md-3"><div class="glass-card p-4 border-start border-warning border-4">
-            <h3 class="text-dark mb-0">{{ $stats['pending'] }}</h3>
+            {{-- Hiện kèm hạn mức để sinh viên biết còn nộp được bao nhiêu hồ sơ nữa. --}}
+            <h3 class="text-dark mb-0">{{ $stats['pending'] }}<span class="text-muted fs-6 fw-normal">/{{ $stats['pending_limit'] }}</span></h3>
             <span class="text-muted small">Đang chờ xét duyệt</span>
+            @if($stats['pending'] >= $stats['pending_limit'])
+                <div class="badge bg-warning text-dark mt-2" title="Hạn mức được hoàn lại khi nhà tuyển dụng phản hồi một hồ sơ">Đã đạt hạn mức</div>
+            @endif
         </div></div>
         <div class="col-md-3"><div class="glass-card p-4 border-start border-success border-4">
             <h3 class="text-dark mb-0">{{ $stats['accepted'] }}</h3>
@@ -38,7 +42,13 @@
                 <div class="py-2 border-bottom border-light">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <p class="mb-0 text-dark small fw-semibold">{{ $app->job->title ?? 'Job' }}</p>
+                            {{-- Tin đã bị doanh nghiệp gỡ (soft delete) thì quan hệ job trả về null;
+                                 khi đó không dựng liên kết vì trang chi tiết sẽ trả về 404. --}}
+                            @if($app->job)
+                            <a href="{{ route('jobs.show', $app->job->id) }}" class="d-block mb-0 text-dark small fw-semibold text-decoration-none hover-primary">{{ $app->job->title }}</a>
+                            @else
+                            <p class="mb-0 text-muted small fw-semibold fst-italic">Tin tuyển dụng đã bị gỡ</p>
+                            @endif
                             <span class="text-muted" style="font-size:0.75rem">{{ $app->job->company->company_name ?? '' }} · {{ $app->created_at->format('d/m/Y') }}</span>
                         </div>
                         @if($app->status=='pending')<span class="badge bg-warning text-dark">Chờ duyệt</span>

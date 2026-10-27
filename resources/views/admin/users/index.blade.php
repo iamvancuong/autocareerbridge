@@ -3,7 +3,9 @@
 <div class="container py-4">
     @if($pendingUsers->count())
     <div class="mb-5">
-        <h4 class="text-dark mb-3"><i class="fa-solid fa-clock text-warning me-2"></i>Tài khoản Chờ duyệt ({{ $pendingUsers->count() }})</h4>
+        {{-- total() đếm trên toàn bộ kết quả; count() chỉ đếm số bản ghi của
+             trang hiện tại nên sẽ dừng ở 10 dù còn tài khoản chờ duyệt. --}}
+        <h4 class="text-dark mb-3"><i class="fa-solid fa-clock text-warning me-2"></i>Tài khoản Chờ duyệt ({{ $pendingUsers->total() }})</h4>
         <div class="row g-3">
             @foreach($pendingUsers as $user)
             <div class="col-md-4">
@@ -23,6 +25,11 @@
             </div>
             @endforeach
         </div>
+        {{-- Thiếu khối này thì từ tài khoản chờ duyệt thứ 11 trở đi sẽ không có
+             cách nào bấm tới để phê duyệt. --}}
+        @if($pendingUsers->hasPages())
+        <div class="mt-3">{{ $pendingUsers->links() }}</div>
+        @endif
     </div>
     @endif
 
@@ -40,6 +47,7 @@
                     <td class="align-middle"><span class="badge bg-secondary">{{ ucfirst($user->role) }}</span></td>
                     <td class="align-middle">
                         @if($user->is_active)<span class="badge bg-success">Hoạt động</span>
+                        @elseif($user->rejected_at)<span class="badge bg-danger" title="Từ chối lúc {{ $user->rejected_at->format('H:i d/m/Y') }}">Bị từ chối</span>
                         @else<span class="badge bg-warning text-dark">Chờ duyệt</span>@endif
                     </td>
                 </tr>

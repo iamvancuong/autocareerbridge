@@ -55,6 +55,43 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
     color: var(--primary-color);
 }
 
+/* Tên tài khoản trên thanh điều hướng.
+   Tài khoản tổ chức đặt tên theo tên pháp nhân nên có thể dài tới hơn 50 ký tự
+   ("Công ty Cổ phần Tư vấn Trắc địa và Bản đồ Thăng Long"), đủ sức đẩy vỡ bố
+   cục navbar. Cắt bớt bằng dấu ba chấm; tên đầy đủ vẫn xem được qua thuộc
+   tính title khi rê chuột. */
+.navbar-username {
+    display: inline-block;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/* Mặc định flex item không co nhỏ hơn nội dung của nó; thiếu dòng này thì phần
+   tên vẫn có thể đẩy rộng thẻ liên kết bao ngoài. */
+.navbar .dropdown-toggle {
+    min-width: 0;
+}
+
+/* Khoảng 992–1200px là chật nhất: navbar chưa gập nhưng đã phải chứa đủ menu. */
+@media (max-width: 1199.98px) {
+    .navbar-username {
+        max-width: 110px;
+    }
+}
+
+/* Dưới 992px navbar gập xuống thành cột dọc nên rộng rãi hơn, hiện được nhiều
+   chữ hơn. Vẫn phải neo theo bề ngang màn hình (vw) chứ không dùng 100%: phần
+   tử nằm trong một flex container, mà max-width:100% trong ngữ cảnh đó không
+   ràng buộc được gì nên tên dài vẫn tràn ra ngoài. */
+@media (max-width: 991.98px) {
+    .navbar-username {
+        max-width: 60vw;
+    }
+}
+
 /* Buttons */
 .btn-gradient {
     background: linear-gradient(90deg, var(--primary-color), #818cf8);

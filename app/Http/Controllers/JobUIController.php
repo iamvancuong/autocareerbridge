@@ -64,26 +64,32 @@ class JobUIController extends Controller
         return view('jobs.index', compact('jobs', 'majors', 'search', 'majorId', 'studentMajorIdForView', 'partnerCompanyIds'));
     }
 
-    public function show($id)
+    public function show($id, ApplicationService $applicationService)
     {
         $job = Job::with('company')->findOrFail($id);
         $application = null;
         $isPartner = false;
-        
+        // Hạn mức hồ sơ chờ chỉ có ý nghĩa với sinh viên đang đăng nhập; khách và
+        // các vai trò khác không thấy phần này.
+        $remainingQuota = null;
+        $pendingLimit = $applicationService->pendingLimit();
+
         if (auth()->check() && auth()->user()->role == 'student' && auth()->user()->student) {
             $student = auth()->user()->student;
-            
+
             $application = Application::where('job_id', $id)
                 ->where('student_id', $student->id)
                 ->first();
-                
+
             $isPartner = \App\Models\Collaboration::where('university_id', $student->university_id)
                 ->where('company_id', $job->company_id)
                 ->where('status', 'approved')
                 ->exists();
+
+            $remainingQuota = $applicationService->remainingQuota($student);
         }
 
-        return view('jobs.show', compact('job', 'application', 'isPartner'));
+        return view('jobs.show', compact('job', 'application', 'isPartner', 'remainingQuota', 'pendingLimit'));
     }
 
     public function apply(Request $request, $id, ApplicationService $applicationService, \App\Services\NotificationService $notifService)
@@ -114,8 +120,8 @@ class JobUIController extends Controller
         }
 
         try {
-            $applicationService->apply($student, $job, $resume);
-            
+            $application = $applicationService->apply($student, $job, $resume);
+
             // Notify the company
             $notifService->send(
                 $job->company->user_id,
@@ -124,7 +130,11 @@ class JobUIController extends Controller
                 'info',
                 route('company.applications.index')
             );
-            
+
+            // Gửi kèm email cho nhà tuyển dụng, có sẵn điểm AI để sàng lọc nhanh.
+            $application->load('student.user', 'student.university', 'job');
+            $notifService->mail($job->company->user->email ?? null, new \App\Mail\NewApplicantMail($application));
+
             return redirect()->back()->with('success', 'Đã nộp CV thành công! AI đang phân tích hồ sơ của bạn...');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Đã xảy ra lỗi: ' . $e->getMessage());

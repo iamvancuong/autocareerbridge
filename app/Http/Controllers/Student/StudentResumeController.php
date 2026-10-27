@@ -41,10 +41,48 @@ class StudentResumeController extends Controller
             'file_path' => $path,
             'original_name' => $originalName,
             'is_default' => $isDefault,
-            'content' => 'Nội dung trích xuất từ PDF (Mock content cho AI)' // In real app, parse PDF text here
+            'content' => $this->extractText($file),
         ]);
 
         return redirect()->back()->with('success', 'Tải CV lên thành công!');
+    }
+
+    /**
+     * Trích xuất văn bản trong CV để đưa sang AI chấm điểm.
+     *
+     * Chỉ đọc được .pdf. Với .doc/.docx (hoặc PDF scan ảnh, PDF đặt mật khẩu)
+     * ta trả về một ghi chú nêu rõ lý do thay vì bịa nội dung — nếu đưa dữ liệu
+     * giả cho AI thì điểm số chấm ra sẽ vô nghĩa mà HR không hề hay biết.
+     */
+    private function extractText(\Illuminate\Http\UploadedFile $file): string
+    {
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        if ($extension !== 'pdf') {
+            return "[Chưa trích xuất được nội dung] Hệ thống hiện chỉ đọc được tệp PDF, "
+                 . "tệp tải lên có định dạng .{$extension}. Vui lòng xem trực tiếp tệp CV đính kèm.";
+        }
+
+        try {
+            $text = (new \Smalot\PdfParser\Parser())->parseFile($file->getRealPath())->getText();
+            $text = trim(preg_replace('/\s+/u', ' ', $text));
+
+            if ($text === '') {
+                return '[Chưa trích xuất được nội dung] Tệp PDF không chứa lớp văn bản '
+                     . '(có thể là bản scan thành ảnh). Vui lòng xem trực tiếp tệp CV đính kèm.';
+            }
+
+            // Giới hạn độ dài để không thổi phồng prompt gửi sang dịch vụ AI.
+            return \Illuminate\Support\Str::limit($text, 15000, '… [nội dung đã được cắt bớt]');
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Không đọc được nội dung CV.', [
+                'file'  => $file->getClientOriginalName(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return '[Chưa trích xuất được nội dung] Không đọc được tệp PDF này. '
+                 . 'Vui lòng xem trực tiếp tệp CV đính kèm.';
+        }
     }
 
     public function setDefault(Resume $resume)

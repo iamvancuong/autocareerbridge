@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Job;
 use App\Models\Major;
 use Illuminate\Http\Request;
+use Mews\Purifier\Facades\Purifier;
 
 class CompanyJobController extends Controller
 {
@@ -25,6 +26,11 @@ class CompanyJobController extends Controller
 
     public function store(Request $request)
     {
+        // Lọc HTML TRƯỚC khi kiểm tra: nếu người dùng chỉ gõ khoảng trắng thì
+        // CKEditor vẫn gửi lên "<p>&nbsp;</p>", qua bộ lọc sẽ thành chuỗi rỗng
+        // và rule `required` mới bắt được.
+        $this->purifyRichTextInput($request);
+
         $request->validate([
             'title' => 'required|string|max:255',
             'major_id' => 'required|exists:majors,id',
@@ -33,7 +39,7 @@ class CompanyJobController extends Controller
         ]);
 
         $company = auth()->user()->active_company;
-        
+
         Job::create([
             'company_id' => $company->id,
             'major_id' => $request->major_id,
@@ -57,6 +63,8 @@ class CompanyJobController extends Controller
     {
         if ($job->company_id !== auth()->user()->active_company->id) abort(403);
 
+        $this->purifyRichTextInput($request);
+
         $request->validate([
             'title' => 'required|string|max:255',
             'major_id' => 'required|exists:majors,id',
@@ -73,6 +81,22 @@ class CompanyJobController extends Controller
         ]);
 
         return redirect()->route('company.jobs.index')->with('success', 'Cập nhật tin thành công. Đang chờ duyệt lại!');
+    }
+
+    /**
+     * Làm sạch HTML do CKEditor gửi lên, ngay trên request.
+     *
+     * Nội dung này về sau được in ra bằng {!! !!} (không escape) nên bắt buộc
+     * phải lọc ở tầng máy chủ: người dùng hoàn toàn có thể bỏ qua giao diện
+     * editor và POST thẳng mã độc. Cấu hình bộ lọc: config/purifier.php.
+     */
+    private function purifyRichTextInput(Request $request): void
+    {
+        foreach (['description', 'requirements'] as $field) {
+            $request->merge([
+                $field => trim(Purifier::clean($request->input($field) ?? '', 'job_content')),
+            ]);
+        }
     }
 
     public function destroy(Job $job)

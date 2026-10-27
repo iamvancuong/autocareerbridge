@@ -82,14 +82,16 @@
                         </a>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" role="button" data-bs-toggle="dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center gap-2 mw-100" href="#" role="button" data-bs-toggle="dropdown">
                             @if(auth()->user()->avatar)
-                                <img src="{{ Storage::url(auth()->user()->avatar) }}" alt="Avatar" class="rounded-circle object-fit-cover border border-primary shadow-sm" style="width: 32px; height: 32px;">
+                                <img src="{{ Storage::url(auth()->user()->avatar) }}" alt="Avatar" class="rounded-circle object-fit-cover border border-primary shadow-sm flex-shrink-0" style="width: 32px; height: 32px;">
                             @else
-                                <i class="fa-solid fa-circle-user text-primary fa-lg"></i>
+                                <i class="fa-solid fa-circle-user text-primary fa-lg flex-shrink-0"></i>
                             @endif
-                            <span class="text-dark fw-semibold">{{ auth()->user()->name }}</span>
-                            <span class="badge bg-primary">{{ ucfirst(auth()->user()->role) }}</span>
+                            {{-- Tên dài bị cắt bằng CSS (.navbar-username) để không đẩy vỡ navbar;
+                                 title giữ lại tên đầy đủ cho người dùng rê chuột xem. --}}
+                            <span class="text-dark fw-semibold navbar-username" title="{{ auth()->user()->name }}">{{ auth()->user()->name }}</span>
+                            <span class="badge bg-primary flex-shrink-0">{{ ucfirst(auth()->user()->role) }}</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end shadow">
                             <li><a class="dropdown-item" href="{{ route('profile.show') }}"><i class="fa-solid fa-user me-2"></i>Hồ sơ của tôi</a></li>
@@ -108,6 +110,7 @@
                 @endauth
             </ul>
             {{-- Dev-only quick login bar --}}
+            @env('local')
             @guest
             <div class="ms-3 d-flex gap-1">
                 <a href="{{ route('mock.login', ['role' => 'admin']) }}" class="btn btn-sm btn-outline-warning" title="Dev: Login Admin">A</a>
@@ -116,6 +119,7 @@
                 <a href="{{ route('mock.login', ['role' => 'student']) }}" class="btn btn-sm btn-outline-success" title="Dev: Login Student">S</a>
             </div>
             @endguest
+            @endenv
         </div>
     </div>
 </nav>
@@ -202,5 +206,7 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{{-- Các trang con nạp thêm script riêng qua @push('scripts'), ví dụ CKEditor ở form đăng tin. --}}
+@stack('scripts')
 </body>
 </html>

@@ -4,6 +4,16 @@
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Duyệt Ứng viên</h2>
+        <div class="btn-group" role="group" aria-label="Sắp xếp danh sách ứng viên">
+            <a href="{{ route('company.applications.index', ['sort' => 'newest']) }}"
+               class="btn btn-sm {{ $sort === 'newest' ? 'btn-primary' : 'btn-outline-primary' }}">
+                <i class="fa-regular fa-clock me-1"></i> Mới nộp nhất
+            </a>
+            <a href="{{ route('company.applications.index', ['sort' => 'ai_score']) }}"
+               class="btn btn-sm {{ $sort === 'ai_score' ? 'btn-primary' : 'btn-outline-primary' }}">
+                <i class="fa-solid fa-robot me-1"></i> Điểm AI cao nhất
+            </a>
+        </div>
     </div>
 
     <!-- UI Metrics -->
@@ -21,6 +31,7 @@
                 <tr>
                     <th class="bg-transparent border-bottom border-secondary text-muted fw-bold py-3">Ứng viên</th>
                     <th class="bg-transparent border-bottom border-secondary text-muted fw-bold py-3">Vị trí ứng tuyển</th>
+                    <th class="bg-transparent border-bottom border-secondary text-muted fw-bold py-3">Ngày nộp</th>
                     <th class="bg-transparent border-bottom border-secondary text-muted fw-bold py-3">AI Score</th>
                     <th class="bg-transparent border-bottom border-secondary text-muted fw-bold py-3">Trạng thái</th>
                     <th class="bg-transparent border-bottom border-secondary text-muted fw-bold py-3 text-end">Chi tiết</th>
@@ -39,6 +50,13 @@
                         </div>
                     </td>
                     <td class="bg-transparent border-bottom border-secondary text-dark py-3 align-middle">{{ $app->job->title }}</td>
+                    <td class="bg-transparent border-bottom border-secondary py-3 align-middle text-nowrap">
+                        {{-- title giữ cả giờ phút để phân biệt các hồ sơ nộp cùng ngày. --}}
+                        <span class="text-dark small" title="{{ $app->created_at->format('H:i:s d/m/Y') }}">
+                            {{ $app->created_at->format('d/m/Y') }}
+                        </span>
+                        <small class="text-muted d-block" style="font-size:0.72rem">{{ $app->created_at->diffForHumans() }}</small>
+                    </td>
                     <td class="bg-transparent border-bottom border-secondary py-3 align-middle">
                         @if($app->ai_score)
                             <span class="badge {{ $app->ai_score > 70 ? 'bg-success text-success' : 'bg-warning text-warning' }} bg-opacity-25 border {{ $app->ai_score > 70 ? 'border-success' : 'border-warning' }} p-2">
@@ -63,7 +81,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="5" class="bg-transparent border-0 text-center py-4 text-muted">Chưa có ứng viên nào nộp đơn.</td>
+                    <td colspan="6" class="bg-transparent border-0 text-center py-4 text-muted">Chưa có ứng viên nào nộp đơn.</td>
                 </tr>
                 @endforelse
             </tbody>

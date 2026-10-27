@@ -22,11 +22,11 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label text-muted">Mô tả công việc</label>
-                        <textarea name="description" rows="5" class="form-control form-control-glass" required></textarea>
+                        <textarea name="description" rows="5" class="form-control form-control-glass rich-editor" required></textarea>
                     </div>
                     <div class="mb-4">
                         <label class="form-label text-muted">Yêu cầu ứng viên</label>
-                        <textarea name="requirements" rows="4" class="form-control form-control-glass" required></textarea>
+                        <textarea name="requirements" rows="4" class="form-control form-control-glass rich-editor" required></textarea>
                     </div>
                     <div class="d-flex justify-content-between">
                         <a href="{{ route('company.jobs.index') }}" class="btn btn-outline-primary">Hủy</a>
@@ -37,4 +37,5 @@
         </div>
     </div>
 </div>
+@include('partials.ckeditor')
 @endsection

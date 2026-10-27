@@ -33,7 +33,14 @@ class MajorSeeder extends Seeder
                 'Ngôn ngữ Anh',
                 'Ngôn ngữ Nhật',
                 'Ngôn ngữ Trung',
-            ]
+            ],
+            'Mỏ - Địa chất - Trắc địa' => [
+                'Kỹ thuật Địa chất',
+                'Kỹ thuật Mỏ',
+                'Kỹ thuật Trắc địa - Bản đồ',
+                'Kỹ thuật Dầu khí',
+                'Kỹ thuật Môi trường',
+            ],
         ];
 
         foreach ($fields as $fieldName => $majors) {

@@ -14,6 +14,9 @@ class AuthController extends Controller
     /* ---- Mock helpers (kept for dev testing) ---- */
     public function mockLogin($role)
     {
+        // Chặn tuyệt đối ngoài môi trường local: đây là đăng nhập không cần mật khẩu.
+        abort_unless(app()->environment('local'), 404);
+
         $user = User::where('role', $role)->first();
         if ($user) { Auth::login($user); return redirect()->route('dashboard'); }
         return redirect()->route('home')->with('error', 'Không tìm thấy user role ' . $role);

@@ -186,7 +186,7 @@
                     <span class="badge bg-primary bg-opacity-10 text-primary border border-primary">{{ $job->major->name ?? 'IT' }}</span>
                 </div>
                 <p class="text-muted small mb-1"><i class="fa-solid fa-building me-1"></i>{{ $job->company->company_name ?? '' }}</p>
-                <p class="text-muted small flex-grow-1" style="white-space: pre-line;">{{ Str::limit($job->description, 80) }}</p>
+                <p class="text-muted small flex-grow-1">{{ Str::limit($job->plain_description, 80) }}</p>
                 <a href="{{ route('jobs.show', $job->id) }}" class="btn btn-sm btn-outline-primary rounded-pill mt-2">Xem chi tiết</a>
             </div>
         </div>

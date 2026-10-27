@@ -48,7 +48,8 @@
                         <span class="badge {{ isset($studentMajorIdForView) && $job->major_id == $studentMajorIdForView ? 'bg-success' : 'bg-primary' }} text-uppercase">{{ $job->major->name ?? 'IT' }}</span>
                     </div>
                     <p class="text-dark mb-2"><i class="fa-solid fa-building me-2"></i>{{ $job->company->company_name ?? 'Company' }}</p>
-                    <p class="text-dark flex-grow-1" style="white-space: pre-line;">{{ Str::limit($job->description, 100) }}</p>
+                    {{-- Bỏ thẻ HTML để thẻ tóm tắt trên danh sách không bị vỡ bố cục. --}}
+                    <p class="text-dark flex-grow-1">{{ Str::limit($job->plain_description, 100) }}</p>
                     <div class="mt-3">
                         <a href="{{ route('jobs.show', $job->id) }}" class="btn btn-outline-primary w-100 rounded-pill">Xem chi tiết</a>
                     </div>

@@ -1,3 +1,59 @@
+# Auto Career Bridge
+
+Nền tảng kết nối Nhà trường – Sinh viên – Doanh nghiệp trong tuyển dụng và thực tập.
+Xây dựng bằng Laravel 12 (Blade + Bootstrap 5), MySQL 8, có tính năng chấm điểm
+độ phù hợp CV ↔ tin tuyển dụng bằng AI.
+
+## Cài đặt môi trường phát triển
+
+Cần **Docker Desktop** (chạy MySQL và hộp thư ảo Mailpit) và **PHP 8.2+**.
+
+```bash
+docker compose up -d          # MySQL cổng 3307, Mailpit cổng 1025/8025
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --seed
+php artisan storage:link      # để xem được CV và ảnh đại diện đã tải lên
+php artisan serve
+```
+
+| Dịch vụ | Địa chỉ |
+|---|---|
+| Ứng dụng | http://localhost:8000 |
+| Hộp thư Mailpit (xem email hệ thống gửi ra) | http://localhost:8025 |
+
+## Tài khoản demo
+
+Lệnh `--seed` nạp bộ dữ liệu trình diễn: 5 trường đại học và 8 doanh nghiệp khu vực
+Hà Nội, 42 sinh viên, 23 tin tuyển dụng và hơn 150 hồ sơ ứng tuyển đã được chấm điểm.
+**Mật khẩu của mọi tài khoản là `password`.**
+
+| Vai trò | Email | Ghi chú |
+|---|---|---|
+| Quản trị viên | `admin@demo.local` | Duyệt tin tuyển dụng và tài khoản tổ chức |
+| Doanh nghiệp | `hr.fpt@demo.local` | Còn có: `hr.viettel@`, `hr.misa@`, `hr.cmc@`, `hr.rikkei@`, `hr.nashtech@`, `hr.savvycom@`, `hr.thanglong@` |
+| Nhân viên tuyển dụng | `ts.fpt@demo.local` | Vai trò phụ `hiring`, dùng chung hồ sơ công ty |
+| Trường đại học | `humg@demo.local` | Còn có: `hust@`, `ptit@`, `uet@`, `tlu@` |
+| Giáo vụ | `vp.humg@demo.local` | Vai trò phụ `academic_affairs` |
+| Sinh viên | `an.nv01@demo.local` | Email sinh theo mẫu `<tên>.<viết tắt><số thứ tự>@demo.local` |
+
+> ⚠️ Dữ liệu demo là **hư cấu hoàn toàn**. Tên trường và doanh nghiệp là tổ chức có
+> thật nhằm giúp màn hình demo gần thực tế, nhưng mọi tài khoản, nhân sự, tin tuyển
+> dụng và quan hệ hợp tác đều do seeder tự sinh, không phản ánh hoạt động thật của
+> các tổ chức đó.
+
+Muốn bật chấm điểm CV bằng AI thì điền `OPENAI_API_KEY` trong `.env`. Để trống
+thì hệ thống ghi `ai_score = null` kèm lý do chứ **không bịa ra điểm số**.
+
+## Kiểm thử
+
+```bash
+php artisan test
+```
+
+---
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">

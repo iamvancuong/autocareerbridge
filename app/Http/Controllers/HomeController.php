@@ -67,6 +67,9 @@ class HomeController extends Controller
                 'pending' => $applications->where('status', 'pending')->count(),
                 'accepted' => $applications->where('status', 'accepted')->count(),
                 'resumes' => \App\Models\Resume::where('student_id', $student->id)->count(),
+                // Hạn mức hồ sơ được phép chờ cùng lúc, để sinh viên biết còn nộp
+                // được bao nhiêu mà không phải đếm thủ công.
+                'pending_limit' => app(\App\Services\ApplicationService::class)->pendingLimit(),
             ];
             $suggestedJobs = \App\Models\Job::where('major_id', $student->major_id)->where('is_approved', true)->with('company')->latest()->take(5)->get();
             return view('dashboards.student', compact('stats', 'applications', 'suggestedJobs'));

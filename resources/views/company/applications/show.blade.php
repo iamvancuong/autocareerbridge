@@ -68,5 +68,68 @@
             </div>
         </div>
     </div>
+
+    {{-- Nhật ký quyết định.
+         Bảng `applications` chỉ giữ trạng thái mới nhất, nên khi chủ doanh nghiệp
+         chấp nhận rồi nhân viên tuyển dụng từ chối lại, không có gì cho biết ai
+         đã đổi. Bảng này ghi thêm từng lượt để truy được trách nhiệm. --}}
+    <div class="glass-card p-4 mt-4">
+        <h5 class="text-dark border-bottom border-secondary pb-2 mb-3">
+            <i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>Lịch sử quyết định tuyển dụng
+            <span class="badge bg-secondary ms-2">{{ $application->decisions->count() }}</span>
+        </h5>
+
+        @if($application->decisions->isEmpty())
+            <p class="text-muted small mb-0 py-3 text-center">
+                <i class="fa-regular fa-folder-open me-2"></i>Hồ sơ này chưa có quyết định nào được ghi nhận.
+            </p>
+        @else
+        <div class="table-responsive">
+            <table class="table table-light table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-muted small">Thời điểm</th>
+                        <th class="text-muted small">Người quyết định</th>
+                        <th class="text-muted small">Vai trò</th>
+                        <th class="text-muted small">Thay đổi</th>
+                        <th class="text-muted small">Nhận xét kèm theo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($application->decisions as $decision)
+                    <tr>
+                        <td class="text-dark small text-nowrap">{{ $decision->created_at->format('H:i:s d/m/Y') }}</td>
+                        <td class="text-dark small">{{ $decision->user->name ?? $decision->decided_by_name ?? 'Không rõ' }}</td>
+                        <td class="small">
+                            <span class="badge {{ $decision->decided_by_role === 'company' ? 'bg-primary' : 'bg-info text-dark' }}">
+                                {{ $decision->role_label }}
+                            </span>
+                        </td>
+                        <td class="small text-nowrap">
+                            @if($decision->previous_status && $decision->previous_status !== $decision->status)
+                                <span class="text-muted">{{ $decision->previous_status === 'pending' ? 'Chờ duyệt' : ($decision->previous_status === 'accepted' ? 'Chấp nhận' : 'Từ chối') }}</span>
+                                <i class="fa-solid fa-arrow-right mx-1 text-muted" style="font-size:0.7rem"></i>
+                            @endif
+                            @if($decision->status === 'accepted')
+                                <span class="badge bg-success">Chấp nhận</span>
+                            @else
+                                <span class="badge bg-danger">Từ chối</span>
+                            @endif
+                        </td>
+                        <td class="text-muted small" style="white-space: pre-line;">{{ $decision->hr_feedback ?: '—' }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        @if($application->decisions->count() > 1)
+        <p class="text-muted small mb-0 mt-3">
+            <i class="fa-solid fa-circle-info me-1 text-warning"></i>
+            Hồ sơ này đã bị đổi quyết định {{ $application->decisions->count() - 1 }} lần. Trạng thái đang có hiệu lực là quyết định mới nhất ở đầu bảng.
+        </p>
+        @endif
+        @endif
+    </div>
 </div>
 @endsection

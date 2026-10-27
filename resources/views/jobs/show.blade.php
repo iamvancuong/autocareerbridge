@@ -18,10 +18,11 @@
                 </div>
                 
                 <h5 class="mt-4 border-bottom border-secondary pb-2">Mô tả công việc</h5>
-                <p class="text-muted" style="white-space: pre-line;">{{ $job->description }}</p>
+                {{-- Nội dung soạn bằng CKEditor, đã được lọc bằng HTMLPurifier lúc lưu. --}}
+                <div class="text-muted">{!! $job->description !!}</div>
                 
                 <h5 class="mt-4 border-bottom border-secondary pb-2">Yêu cầu</h5>
-                <p class="text-muted" style="white-space: pre-line;">{{ $job->requirements }}</p>
+                <div class="text-muted">{!! $job->requirements !!}</div>
             </div>
             
             <!-- Result after applying -->
@@ -56,12 +57,50 @@
                         <div class="alert alert-success border-0 bg-success bg-opacity-25 text-dark text-center">
                             <i class="fa-solid fa-circle-check me-2"></i> Bạn đã ứng tuyển vị trí này vào ngày {{ $application->created_at->format('d/m/Y') }}
                         </div>
+                    @elseif($remainingQuota === 0)
+                        {{-- Đã đạt hạn mức: chặn ngay tại giao diện kèm giải thích, thay vì
+                             để sinh viên bấm nộp rồi mới nhận thông báo từ chối. --}}
+                        <div class="alert alert-warning border-0 bg-warning bg-opacity-25 text-dark">
+                            <i class="fa-solid fa-hourglass-half me-2"></i>
+                            <strong>Bạn đã đạt hạn mức {{ $pendingLimit }} hồ sơ đang chờ phản hồi.</strong>
+                            <div class="small mt-2">
+                                Hạn mức được hoàn lại ngay khi nhà tuyển dụng chấp nhận hoặc từ chối một
+                                trong các hồ sơ bạn đã nộp. Quy định này giúp bạn tập trung vào những vị
+                                trí phù hợp nhất thay vì nộp dàn trải.
+                            </div>
+                        </div>
+                        <a href="{{ route('dashboard') }}" class="btn btn-outline-primary w-100 rounded-pill">
+                            <i class="fa-solid fa-list-check me-2"></i>Xem các hồ sơ đang chờ
+                        </a>
                     @else
                         <form action="{{ route('jobs.apply', $job->id) }}" method="POST">
                             @csrf
                             <div class="mb-3"><p class="text-muted small">Hệ thống sẽ tự động gửi <strong>CV Mặc định</strong> của bạn cho Nhà tuyển dụng và dùng nó để phân tích AI.</p></div>
-                            <button type="submit" class="btn btn-gradient w-100 rounded-pill">
-                                Nộp CV & Phân tích AI <i class="fa-solid fa-paper-plane ms-2"></i>
+
+                            <div class="d-flex align-items-center justify-content-between small text-muted mb-3">
+                                <span><i class="fa-regular fa-paper-plane me-1"></i>Lượt nộp còn lại</span>
+                                <span class="badge {{ $remainingQuota <= 1 ? 'bg-warning text-dark' : 'bg-primary' }}">
+                                    {{ $remainingQuota }}/{{ $pendingLimit }}
+                                </span>
+                            </div>
+
+                            {{-- Ràng buộc UNIQUE (job_id, student_id) khiến mỗi sinh viên chỉ nộp
+                                 được một lần cho mỗi vị trí, và điểm AI chấm xong là chốt. Phải nói
+                                 rõ điều đó TRƯỚC khi bấm nộp, vì sau đó không sửa lại được. --}}
+                            <div class="alert alert-warning border-0 bg-warning bg-opacity-25 text-dark small mb-3">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                                <strong>Mỗi vị trí chỉ nộp được một lần.</strong>
+                                CV nộp lên sẽ được AI chấm điểm ngay và <u>không thể nộp lại hay chấm lại</u>,
+                                nên hãy kiểm tra kỹ CV mặc định trước khi gửi.
+                            </div>
+
+                            <a href="{{ route('student.resumes.index') }}" class="btn btn-outline-secondary btn-sm w-100 rounded-pill mb-2">
+                                <i class="fa-regular fa-file-lines me-1"></i> Kiểm tra CV mặc định
+                            </a>
+
+                            <button type="submit" class="btn btn-gradient w-100 rounded-pill"
+                                    onclick="return confirm('Bạn chỉ nộp được MỘT LẦN cho vị trí này và không thể sửa lại sau khi nộp.\n\nXác nhận gửi CV mặc định của bạn?');">
+                                Nộp CV &amp; Phân tích AI <i class="fa-solid fa-paper-plane ms-2"></i>
                             </button>
                         </form>
                     @endif
@@ -69,7 +108,7 @@
                     <div class="alert alert-warning border-0 bg-warning bg-opacity-25 text-dark">
                         Vui lòng đăng nhập tài khoản Sinh viên để ứng tuyển.
                     </div>
-                    <a href="{{ route('mock.login', ['role' => 'student']) }}" class="btn btn-outline-primary w-100 rounded-pill">Đăng nhập Sinh viên</a>
+                    <a href="{{ route('login') }}" class="btn btn-outline-primary w-100 rounded-pill">Đăng nhập Sinh viên</a>
                 @endif
             </div>
         </div>

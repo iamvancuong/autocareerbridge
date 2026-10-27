@@ -1,0 +1,33 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: acb_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: autocareerbridge
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_USER: acb
+      MYSQL_PASSWORD: secret
+    # Cổng 3306 trên máy có thể đã bị MySQL khác chiếm, nên ánh xạ ra 3307.
+    ports:
+      - "3307:3306"
+    volumes:
+      - acb_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-psecret"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Hộp thư ảo cho môi trường phát triển: nhận mọi email hệ thống gửi ra
+  # mà không phát tán ra Internet. Giao diện xem thư: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: acb_mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  acb_mysql_data:

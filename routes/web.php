@@ -21,6 +21,15 @@ use App\Http\Controllers\University\WorkshopController;
 use App\Http\Controllers\University\UniversityMajorController;
 use App\Http\Controllers\University\AcademicAffairController;
 
+// Tài liệu hệ thống — trang tra cứu phục vụ báo cáo/bảo vệ đồ án: sơ đồ CSDL,
+// toàn bộ truy vấn theo màn hình, luồng nghiệp vụ và bộ câu hỏi hội đồng.
+// Là tài liệu tĩnh (không đọc dữ liệu thật), nhưng vì có lộ cấu trúc nội bộ nên
+// mặc định chỉ đăng ký khi chạy local — giống các route dev khác trong dự án.
+// Muốn xem online khi demo: bỏ khối if hoặc thêm middleware 'auth' + role:admin.
+if (app()->environment('local')) {
+    Route::view('/system', 'system.docs')->name('system.docs');
+}
+
 // Public
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/jobs', [JobUIController::class, 'index'])->name('jobs.index');
@@ -35,6 +44,11 @@ Route::get('/workshops', function(\Illuminate\Http\Request $request) {
         ->paginate(9);
     return view('workshops.index', compact('workshops', 'search'));
 })->name('workshops.index');
+
+// Trang chạy bộ test từ trình duyệt. Route này khởi tạo một tiến trình PHPUnit
+// kéo dài tới 60 giây nên tuyệt đối không được để công khai: chỉ đăng ký khi
+// chạy local, giống nhóm route mock-login bên dưới.
+if (app()->environment('local')) {
 
 Route::get('/testing-report', function () {
     return view('testing_report');
@@ -81,14 +95,20 @@ Route::post('/api/run-tests', function () {
     ]);
 })->name('api.run.tests');
 
+}
+
 // Auth
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
 Route::post('/register', [AuthController::class, 'register'])->name('register.post');
-Route::get('/mock-login/{role}', [AuthController::class, 'mockLogin'])->name('mock.login');
-Route::get('/mock-logout', [AuthController::class, 'mockLogout'])->name('mock.logout');
+// Đăng nhập giả không cần mật khẩu — CHỈ đăng ký route khi chạy local.
+// Trên staging/production các route này không tồn tại (404).
+if (app()->environment('local')) {
+    Route::get('/mock-login/{role}', [AuthController::class, 'mockLogin'])->name('mock.login');
+    Route::get('/mock-logout', [AuthController::class, 'mockLogout'])->name('mock.logout');
+}
 
 // Authenticated
 Route::middleware('auth')->group(function () {
@@ -111,13 +131,13 @@ Route::middleware('auth')->group(function () {
     Route::put('/collaborations/{id}', [CollaborationUIController::class, 'update'])->name('collaborations.update');
 
     // Student
-    Route::prefix('student')->name('student.')->group(function () {
+    Route::prefix('student')->name('student.')->middleware('role:student')->group(function () {
         Route::resource('resumes', StudentResumeController::class)->only(['index', 'store', 'destroy']);
         Route::put('resumes/{resume}/set-default', [StudentResumeController::class, 'setDefault'])->name('resumes.setDefault');
     });
 
     // Company
-    Route::prefix('company')->name('company.')->group(function () {
+    Route::prefix('company')->name('company.')->middleware('role:company,hiring')->group(function () {
         Route::resource('jobs', CompanyJobController::class);
         Route::resource('applications', CompanyApplicationController::class)->only(['index', 'show', 'update']);
         Route::resource('hirings', HiringController::class)->only(['index', 'store', 'destroy']);
@@ -125,7 +145,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // University
-    Route::prefix('university')->name('university.')->group(function () {
+    Route::prefix('university')->name('university.')->middleware('role:university,academic_affairs')->group(function () {
         Route::resource('workshops', WorkshopController::class)->only(['index', 'create', 'store', 'destroy']);
         Route::resource('academic_affairs', AcademicAffairController::class)->only(['index', 'store', 'destroy']);
         Route::get('majors', [UniversityMajorController::class, 'index'])->name('majors.index');
@@ -135,7 +155,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // Admin
-    Route::prefix('admin')->name('admin.')->group(function () {
+    Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
         Route::get('jobs', [AdminJobController::class, 'index'])->name('jobs.index');
         Route::post('jobs/{job}/approve', [AdminJobController::class, 'approve'])->name('jobs.approve');

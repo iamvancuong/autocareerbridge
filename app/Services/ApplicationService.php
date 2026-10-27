@@ -16,25 +16,76 @@ class ApplicationService
      */
     public function apply(Student $student, Job $job, Resume $resume): Application
     {
-        // Check if already applied
-        $existing = Application::where('student_id', $student->id)
-                               ->where('job_id', $job->id)
-                               ->first();
+        // Việc kiểm tra điều kiện và tạo hồ sơ phải nằm trong cùng một giao dịch,
+        // nếu không hai request song song đều đọc ra "chưa đạt hạn mức" rồi cùng
+        // ghi. Lời gọi dịch vụ AI được đặt NGOÀI giao dịch vì đó là lời gọi mạng
+        // kéo dài, không được phép giữ khóa cơ sở dữ liệu trong lúc chờ.
+        $application = \Illuminate\Support\Facades\DB::transaction(function () use ($student, $job) {
+            // Khóa bản ghi sinh viên để mọi lượt nộp của cùng một sinh viên phải
+            // xếp hàng lần lượt.
+            Student::whereKey($student->id)->lockForUpdate()->first();
 
-        if ($existing) {
-            throw new \Exception('Student has already applied for this job.');
-        }
+            $alreadyApplied = Application::where('student_id', $student->id)
+                                         ->where('job_id', $job->id)
+                                         ->exists();
 
-        $application = Application::create([
-            'student_id' => $student->id,
-            'job_id' => $job->id,
-            'status' => 'pending',
-        ]);
+            if ($alreadyApplied) {
+                throw new \Exception('Bạn đã nộp đơn vào vị trí này rồi.');
+            }
+
+            $limit   = $this->pendingLimit();
+            $pending = $this->pendingCount($student);
+
+            if ($pending >= $limit) {
+                throw new \Exception(
+                    "Bạn đang có {$pending} hồ sơ chờ nhà tuyển dụng phản hồi (tối đa {$limit}). "
+                    . 'Hãy chờ có kết quả trước khi nộp thêm hồ sơ mới.'
+                );
+            }
+
+            try {
+                return Application::create([
+                    'student_id' => $student->id,
+                    'job_id' => $job->id,
+                    'status' => 'pending',
+                ]);
+            } catch (\Illuminate\Database\QueryException $e) {
+                // Ràng buộc UNIQUE (job_id, student_id) chặn trường hợp hai request
+                // song song cùng vượt qua bước kiểm tra ở trên.
+                if ($e->getCode() === '23000') {
+                    throw new \Exception('Bạn đã nộp đơn vào vị trí này rồi.');
+                }
+                throw $e;
+            }
+        });
 
         // Trigger AI evaluation asynchronously (in a real app, dispatch a Job here)
         $this->evaluateWithAI($application, $resume);
 
         return $application;
+    }
+
+    /** Hạn mức hồ sơ được phép chờ cùng lúc. */
+    public function pendingLimit(): int
+    {
+        return (int) config('recruitment.max_pending_applications');
+    }
+
+    /** Số hồ sơ đang chờ nhà tuyển dụng phản hồi của một sinh viên. */
+    public function pendingCount(Student $student): int
+    {
+        return Application::where('student_id', $student->id)
+                          ->where('status', 'pending')
+                          ->count();
+    }
+
+    /**
+     * Số lượt nộp còn lại. Dùng cho giao diện để báo trước cho sinh viên, thay vì
+     * để họ bấm nộp rồi mới nhận thông báo từ chối.
+     */
+    public function remainingQuota(Student $student): int
+    {
+        return max(0, $this->pendingLimit() - $this->pendingCount($student));
     }
 
     /**
@@ -43,13 +94,18 @@ class ApplicationService
     public function evaluateWithAI(Application $application, Resume $resume): void
     {
         $job = $application->job;
-        
+
+        // Mô tả công việc được soạn bằng CKEditor nên chứa thẻ HTML. Bỏ thẻ đi
+        // để prompt gửi sang AI là văn bản thuần, không lãng phí token vào markup.
+        $jobDescription  = $job->plain_description;
+        $jobRequirements = $job->plain_requirements;
+
         $prompt = "Bạn là một chuyên gia Tuyển dụng (HR) và Hệ thống ATS (Applicant Tracking System) khắt khe và công tâm.\n\n" .
                   "Nhiệm vụ của bạn là đánh giá mức độ phù hợp của Ứng viên so với công việc dựa trên HỒ SƠ (CV) của họ và YÊU CẦU CÔNG VIỆC.\n\n" .
                   "--- THÔNG TIN CÔNG VIỆC ---\n" .
                   "- Vị trí: {$job->title}\n" .
-                  "- Mô tả: {$job->description}\n" .
-                  "- Yêu cầu bắt buộc: {$job->requirements}\n\n" .
+                  "- Mô tả: {$jobDescription}\n" .
+                  "- Yêu cầu bắt buộc: {$jobRequirements}\n\n" .
                   "--- HỒ SƠ ỨNG VIÊN (CV) ---\n" .
                   "{$resume->content}\n\n" .
                   "--- HƯỚNG DẪN ĐÁNH GIÁ ---\n" .
@@ -61,11 +117,13 @@ class ApplicationService
                   "- 'review': Một đoạn nhận xét ngắn gọn, súc tích (tiếng Việt, khoảng 50-100 từ) giải thích lý do cho số điểm này. Nêu rõ ứng viên có điểm mạnh gì và đang thiếu hụt yêu cầu cốt lõi nào.";
 
         try {
-            $apiKey = env('OPENAI_API_KEY');
-            $apiBase = env('OPENAI_API_BASE', 'https://api.openai.com/v1');
-            
+            // Dùng config() thay vì env(): env() trả về null sau `php artisan config:cache`.
+            $apiKey = config('services.openai.key');
+            $apiBase = config('services.openai.base');
+
             if (!$apiKey || $apiKey == '') {
-                $this->fallbackToMockAI($application, $job);
+                Log::warning('Bỏ qua chấm điểm AI: chưa cấu hình OPENAI_API_KEY.', ['application_id' => $application->id]);
+                $this->markEvaluationUnavailable($application, 'Chưa cấu hình API key cho dịch vụ AI.');
                 return;
             }
 
@@ -75,7 +133,7 @@ class ApplicationService
                 'HTTP-Referer' => config('app.url'), // OpenRouter requirement
                 'X-Title' => 'Auto Career Bridge', // OpenRouter requirement
             ])->post($apiBase . '/chat/completions', [
-                'model' => env('OPENAI_MODEL', 'gpt-3.5-turbo'),
+                'model' => config('services.openai.model'),
                 'messages' => [
                     ['role' => 'system', 'content' => 'You are a strict and objective ATS (Applicant Tracking System).'],
                     ['role' => 'user', 'content' => $prompt]
@@ -96,26 +154,27 @@ class ApplicationService
                     ]);
                 } else {
                     Log::error('OpenAI response was not valid JSON.', ['content' => $aiContent]);
-                    $this->fallbackToMockAI($application, $job);
+                    $this->markEvaluationUnavailable($application, 'Dịch vụ AI trả về dữ liệu không hợp lệ.');
                 }
             } else {
                 Log::error('OpenAI API request failed.', ['status' => $response->status(), 'body' => $response->body()]);
-                $this->fallbackToMockAI($application, $job);
+                $this->markEvaluationUnavailable($application, 'Không gọi được dịch vụ AI.');
             }
         } catch (\Exception $e) {
             Log::error('Error during AI Evaluation: ' . $e->getMessage());
-            $this->fallbackToMockAI($application, $job);
+            $this->markEvaluationUnavailable($application, 'Lỗi hệ thống khi chấm điểm.');
         }
     }
 
-    private function fallbackToMockAI(Application $application, Job $job)
+    /**
+     * Khi không chấm được điểm, để ai_score = null.
+     * HR phải thấy rõ là "chưa có đánh giá".
+     */
+    private function markEvaluationUnavailable(Application $application, string $reason): void
     {
-        $score = rand(65, 95);
-        $review = "Đây là kết quả phân tích giả lập (Mock AI) vì hệ thống gặp lỗi khi gọi API (hoặc Key chưa chính xác). Ứng viên này có các kỹ năng khá phù hợp với vị trí {$job->title}. Điểm số được đánh giá ngẫu nhiên để đảm bảo quy trình không bị gián đoạn.";
-        
         $application->update([
-            'ai_score' => $score,
-            'ai_review' => $review,
+            'ai_score' => null,
+            'ai_review' => "Chưa có đánh giá tự động. Lý do: {$reason} Vui lòng xem xét hồ sơ thủ công.",
         ]);
     }
 }

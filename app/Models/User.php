@@ -10,7 +10,7 @@ class User extends Authenticatable {
     use HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
-        'name', 'email', 'password', 'role', 'is_active', 'avatar',
+        'name', 'email', 'password', 'role', 'is_active', 'avatar', 'rejected_at',
     ];
 
     protected $hidden = [
@@ -22,6 +22,7 @@ class User extends Authenticatable {
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'rejected_at' => 'datetime',
         ];
     }
 

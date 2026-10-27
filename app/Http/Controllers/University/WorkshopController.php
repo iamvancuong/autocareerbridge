@@ -29,6 +29,8 @@ class WorkshopController extends Controller
             'title' => $request->title,
             'description' => $request->description,
             'date' => $request->date,
+            // Giữ `scheduled_at` đồng bộ với `date` để các màn hình cũ vẫn đọc được.
+            'scheduled_at' => $request->date,
         ]);
         return redirect()->route('university.workshops.index')->with('success', 'Đã tạo Workshop!');
     }
